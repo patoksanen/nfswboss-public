@@ -1,3 +1,5 @@
+import path from "path";
+import { fileURLToPath } from "url";
 import { createClient } from "@supabase/supabase-js";
 import express from "express";
 import cors from "cors";
@@ -13,7 +15,8 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 const app = express();
-
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:8000";
 
 app.use(cors({
@@ -52,7 +55,7 @@ function requireLogin(req, res, next) {
 }
 
 app.get("/", (req, res) => {
-  res.send("NFS backend is running");
+  res.sendFile(path.join(__dirname, "index.html"));
 });
 
 app.get("/auth/discord", (req, res) => {
@@ -319,7 +322,7 @@ app.post("/api/discord-alert", requireLogin, async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-
+app.use(express.static(__dirname));
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

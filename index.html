@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title> NFS World Boss </title>
+  
+  <link rel="icon" type="image/png" href="./img/NFS.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div id="loginGate" class="login-gate">
+  <div class="login-card">
+    <h1>NFS World Boss</h1>
+    <p>Login with Discord to access the tracker.</p>
+  
+    <a id="discordLoginButton" class="login-button" href="http://localhost:3000/auth/discord">
+  Login with Discord
+</a>
+  </div>
+</div>
+  <div class="layout hidden" id="appLayout">
+    <aside class="sidebar">
+      <div class="site-title">
+    <img src="./img/NFS.png" alt="NFS logo" class="site-logo">
+    <h1>NFS World Boss</h1>
+    </div>
+    <div id="loginStatus" class="muted small"></div>
+      
+
+      
+
+<div class="panel">
+
+
+  <form id="addLayerForm" class="form">
+    <label>
+      <span>Layer ID</span>
+      <input id="layerId" type="number" placeholder="1134" required />
+    </label>
+    <label>
+      <span>First seen</span>
+      <input id="firstSeen" type="datetime-local" required />
+    </label>
+
+    <button type="submit">Add Layer</button>
+  </form>
+  <div class="sub-panel-title">Delete Layer</div>
+  <form id="deleteLayerForm" class="form delete-layer-form">
+    <label>
+      <span>Layer ID</span>
+      <select id="deleteLayerSelect" required></select>
+    </label>
+
+    <button type="submit" class="danger">Delete Layer</button>
+  </form>
+</div>
+
+      <div class="panel">
+        <div class="panel-title">Register Kill</div>
+        <form id="killForm" class="form">
+  <label>
+    <span>Boss</span>
+    <select id="killBossSelect" required>
+      <option value="Kazzak">Kazzak</option>
+      <option value="Azuregos">Azuregos</option>
+    </select>
+  </label>
+
+  <label>
+    <span>Layer ID</span>
+    <select id="killLayerSelect" required></select>
+  </label>
+          <label>
+  <span>Kill time</span>
+  <div class="input-with-button">
+    <input id="killTime" type="datetime-local" required />
+    <button id="killTimeNowButton" type="button" class="small-button">Now</button>
+  </div>
+</label>
+          <label>
+            <span>Scout</span>
+            <input id="killScoutName" type="text" placeholder="Name" required />
+          </label>
+          <button type="submit">Register Kill</button>
+        </form>
+      </div>
+
+     
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div>
+          <h2>Kazzak/Azuregos Spawn Timers</h2>
+          <div class="muted" id="rangeLabel"></div>
+        </div>
+        <div class="badge" id="nowLabel"></div>
+      </div>
+
+      <div class="legend">
+        
+        <div><span class="swatch swatch-green"></span> can spawn</div>
+        <div><span class="swatch swatch-purple"></span> kill lockout</div>
+      </div>
+
+      <div class="timeline-card">
+        <div class="timeline-scroll">
+          <div class="timeline" id="timeline"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <dialog id="alertDialog">
+    <div class="dialog-content">
+      <h3>Send alert</h3>
+      <p id="alertMeta" class="muted"></p>
+      <label>
+  <span>Scout name</span>
+  <input id="alertScoutName" type="text" placeholder="Scout name" required />
+</label>
+
+<div class="alert-preview" id="alertPreview"></div>
+      <div class="dialog-actions">
+        <button id="cancelAlert" type="button" class="secondary">Cancel</button>
+        <button id="sendAlert" type="button">Send Alert</button>
+      </div>
+    </div>
+  </dialog>
+  <script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

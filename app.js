@@ -6,7 +6,7 @@ const APP_TIMEZONE = "Europe/Stockholm";
 const API_BASE_URL =
   window.location.hostname === "localhost"
     ? "http://localhost:3000"
-    : "https://YOUR-RENDER-BACKEND-URL.onrender.com";
+    : "https://nfswboss-public.onrender.com";
 async function apiRequest(path, options = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     credentials: "include",

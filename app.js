@@ -464,12 +464,12 @@ function renderEvent(row, evt, week, bossIndex = 0) {
   const clickable = evt.clickable ? 'event-click' : '';
   const title = evt.clickable ? 'Click to send alert' : '';
 
-  const startLabel = evt.type === 'spawn'
-  ? `<span class="event-start">starts ${formatDayTime(evt.start)}</span>`
+const startLabel = evt.type === 'spawn'
+  ? `<span class="event-start">${dayName(evt.start)}<br>${formatTime(evt.start)}</span>`
   : '';
 
 const endLabel = evt.type === 'spawn'
-  ? `<span class="event-end">ends ${formatDayTime(evt.end)}</span>`
+  ? `<span class="event-end">${dayName(evt.end)}<br>${formatTime(evt.end)}</span>`
   : '';
 
 return `<div class="event-bar ${cls} ${clickable}" style="left:${left}%; width:${width}%; top:${top}px; height:${height}px;" ${evt.clickable ? `data-id="${row.id}" data-phase="${evt.phase}" data-boss="${evt.boss}"` : ''} title="${title}">

@@ -26,7 +26,14 @@ app.use(cors({
 
 app.use(express.json());
 
+const isProduction = process.env.NODE_ENV === "production";
+
+if (isProduction) {
+  app.set("trust proxy", 1);
+}
+
 app.use(session({
+  name: "nfsworldboss.sid",
   secret: process.env.SESSION_SECRET || "dev-secret-change-me",
   resave: false,
   saveUninitialized: false,
@@ -34,7 +41,7 @@ app.use(session({
   cookie: {
     httpOnly: true,
     sameSite: "lax",
-    secure: false,
+    secure: isProduction,
     maxAge: 1000 * 60 * 60 * 24 * 7
   }
 }));

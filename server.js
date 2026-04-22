@@ -45,7 +45,47 @@ app.use(session({
     maxAge: 1000 * 60 * 60 * 24 * 7
   }
 }));
+function getCurrentWeekWindowStockholm() {
+  const now = new Date();
 
+  const formatter = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "Europe/Stockholm",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false
+  });
+
+  const parts = formatter.formatToParts(now);
+  const map = Object.fromEntries(parts.map(p => [p.type, p.value]));
+
+  const stockholmNow = new Date(
+    `${map.year}-${map.month}-${map.day}T${map.hour}:${map.minute}:${map.second}`
+  );
+
+  const jsDay = stockholmNow.getDay(); // Sun=0, Mon=1, Tue=2, Wed=3...
+  let daysSinceWednesday = (jsDay - 3 + 7) % 7;
+
+  const start = new Date(stockholmNow);
+  start.setHours(3, 0, 0, 0);
+  start.setDate(start.getDate() - daysSinceWednesday);
+
+  if (stockholmNow < start) {
+    start.setDate(start.getDate() - 7);
+  }
+
+  const end = new Date(start);
+  end.setDate(end.getDate() + 7);
+
+  return {
+    start,
+    end
+  };
+}
 function getAllowedDiscordIds() {
   return (process.env.ALLOWED_DISCORD_IDS || "")
     .split(",")
@@ -153,21 +193,33 @@ app.get("/api/me", (req, res) => {
 });
 app.get("/api/schedule", requireLogin, async (req, res) => {
   try {
+    const week = getCurrentWeekWindowStockholm();
+
     const { data: layers, error: layersError } = await supabase
       .from("layers")
       .select("*")
+      .gte("first_seen", week.start.toISOString())
+      .lt("first_seen", week.end.toISOString())
       .order("layer_id", { ascending: true });
 
     if (layersError) {
       throw layersError;
     }
 
-    const { data: kills, error: killsError } = await supabase
-      .from("kills")
-      .select("*");
+    const layerIds = layers.map(layer => layer.layer_id);
 
-    if (killsError) {
-      throw killsError;
+    let kills = [];
+    if (layerIds.length > 0) {
+      const { data: killsData, error: killsError } = await supabase
+        .from("kills")
+        .select("*")
+        .in("layer_id", layerIds);
+
+      if (killsError) {
+        throw killsError;
+      }
+
+      kills = killsData;
     }
 
     const formattedLayers = layers.map((layer) => {
@@ -191,9 +243,7 @@ app.get("/api/schedule", requireLogin, async (req, res) => {
       };
     });
 
-    res.json({
-      layers: formattedLayers
-    });
+    res.json({ layers: formattedLayers });
   } catch (error) {
     console.error("Schedule load error:", error);
     res.status(500).json({ error: "Could not load schedule" });

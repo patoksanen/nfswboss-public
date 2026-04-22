@@ -95,51 +95,69 @@ killTimeNowButton.addEventListener('click', () => {
 });
 addLayerForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+  console.log("Add layer submit triggered")
 
   const layerIdValue = document.getElementById('layerId').value.trim();
   const firstSeen = document.getElementById('firstSeen').value;
+
+  const selectedDate = DateTime.fromFormat(firstSeen, "yyyy-LL-dd'T'HH:mm", {
+    zone: APP_TIMEZONE
+  }).toJSDate();
+
   const firstSeenIso = parseLocalInputAsStockholm(firstSeen);
-  
-  const scoutName = 'Unknown';
+
+  if (!firstSeenIso || !selectedDate || Number.isNaN(selectedDate.getTime())) {
+    alert("Invalid first seen time.");
+    return;
+  }
+
+  console.log("firstSeen raw:", firstSeen);
+  console.log("firstSeenIso:", firstSeenIso);
+  console.log("selectedDate:", selectedDate);
 
   if (!layerIdValue || !firstSeen) return;
-  const selectedDate = new Date(firstSeen);
-const week = getCurrentWeekWindow();
 
-if (selectedDate < week.start || selectedDate > week.end) {
-const confirmed = confirm(
-  `The first seen time is outside the current reset week.\n\n` +
-  `Selected: ${formatDateTime(selectedDate)}\n` +
-  `Current week: ${formatDateTime(week.start)} → ${formatDateTime(week.end)}\n\n` +
-  `Do you still want to add this layer?`
-);
+  const week = getCurrentWeekWindow();
 
-  if (!confirmed) return;
-}
+  console.log("week start:", week.start);
+  console.log("week end:", week.end);
+
+  if (selectedDate < week.start || selectedDate > week.end) {
+    const confirmed = confirm(
+      `The first seen time is outside the current reset week.\n\n` +
+      `Selected: ${formatDateTime(selectedDate)}\n` +
+      `Current week: ${formatDateTime(week.start)} → ${formatDateTime(week.end)}\n\n` +
+      `Do you still want to add this layer?`
+    );
+
+    if (!confirmed) return;
+  }
+
   const layerId = Number(layerIdValue);
-  
-const existing = state.layers.find((x) => x.layerId === layerId);
+
+  const existing = state.layers.find((x) => x.layerId === layerId);
   if (existing) {
     alert('That Layer ID already exists for this boss.');
     return;
   }
 
+  try {
+    await apiRequest("/api/layers", {
+      method: "POST",
+      body: JSON.stringify({
+        layerId,
+        firstSeen: firstSeenIso
+      })
+    });
 
-try {
-  await apiRequest("/api/layers", {
-  method: "POST",
-  body: JSON.stringify({
-    layerId,
-    firstSeen: firstSeenIso
-  })
+    addLayerForm.reset();
+    await loadSchedule();
+  } catch (error) {
+    console.error("Add layer failed:", error);
+    alert(error.message);
+  }
 });
 
-  addLayerForm.reset();
-  await loadSchedule();
-} catch (error) {
-  alert(error.message);
-}
-});
 async function checkLogin() {
   try {
     const res = await fetch(`${API_BASE_URL}/api/me`, {

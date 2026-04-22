@@ -1,3 +1,4 @@
+import { DateTime } from "luxon";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createClient } from "@supabase/supabase-js";
@@ -20,12 +21,12 @@ const __dirname = path.dirname(__filename);
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:8000";
 const APP_TIMEZONE = "Europe/Stockholm";
 async function cleanupOldWeeklyData() {
-  const { start } = getCurrentWeekWindowStockholm();
+  const { startUtcIso } = getCurrentWeekWindowStockholm();
 
   const { error: killsError } = await supabase
     .from("kills")
     .delete()
-    .lt("kill_time", start.toISOString());
+    .lt("kill_time", startUtcIso);
 
   if (killsError) {
     throw killsError;
@@ -34,43 +35,34 @@ async function cleanupOldWeeklyData() {
   const { error: layersError } = await supabase
     .from("layers")
     .delete()
-    .lt("first_seen", start.toISOString());
+    .lt("first_seen", startUtcIso);
 
   if (layersError) {
     throw layersError;
   }
 }
 function getCurrentWeekWindowStockholm() {
-  const now = new Date();
+  const now = DateTime.now().setZone(APP_TIMEZONE);
 
-  const nowInStockholm = new Date(
-    new Intl.DateTimeFormat("sv-SE", {
-      timeZone: APP_TIMEZONE,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hourCycle: "h23"
-    }).format(now).replace(" ", "T")
-  );
+  let start = now
+    .startOf("day")
+    .minus({ days: (now.weekday - 3 + 7) % 7 }) // Wednesday = 3
+    .set({ hour: 3, minute: 0, second: 0, millisecond: 0 });
 
-  const day = nowInStockholm.getDay(); // Sun=0, Mon=1, Tue=2, Wed=3...
-  let daysSinceWednesday = (day - 3 + 7) % 7;
-
-  const start = new Date(nowInStockholm);
-  start.setHours(3, 0, 0, 0);
-  start.setDate(start.getDate() - daysSinceWednesday);
-
-  if (nowInStockholm < start) {
-    start.setDate(start.getDate() - 7);
+  if (now < start) {
+    start = start.minus({ days: 7 });
   }
 
-  const end = new Date(start);
-  end.setDate(end.getDate() + 7);
+  const end = start.plus({ days: 7 });
 
-  return { start, end };
+  return {
+    start,
+    end,
+    startIso: start.toISO(),
+    endIso: end.toISO(),
+    startUtcIso: start.toUTC().toISO(),
+    endUtcIso: end.toUTC().toISO()
+  };
 }
 app.use(cors({
   origin: FRONTEND_URL,

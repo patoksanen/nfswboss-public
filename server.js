@@ -6,6 +6,8 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import session from "express-session";
+import pg from "pg";
+import connectPgSimple from "connect-pg-simple";
 
 dotenv.config();
 if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -72,13 +74,44 @@ app.use(cors({
 app.use(express.json());
 const isProduction = process.env.NODE_ENV === "production";
 
+if (!process.env.SESSION_SECRET) {
+  throw new Error("Missing SESSION_SECRET");
+}
+
+if (!process.env.DATABASE_URL) {
+  throw new Error("Missing DATABASE_URL");
+}
+
 if (isProduction) {
   app.set("trust proxy", 1);
 }
 
+const PgSession = connectPgSimple(session);
+
+const pgPool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL,
+  max: 5,
+  idleTimeoutMillis: 30_000,
+  connectionTimeoutMillis: 10_000
+});
+
+pgPool.on("error", (error) => {
+  console.error("Unexpected PostgreSQL pool error:", error);
+});
+
+const sessionStore = new PgSession({
+  pool: pgPool,
+  schemaName: "private",
+  tableName: "user_sessions",
+  createTableIfMissing: false
+});
+
+const SESSION_MAX_AGE = 1000 * 60 * 60 * 24 * 30;
+
 app.use(session({
+  store: sessionStore,
   name: "nfsworldboss.sid",
-  secret: process.env.SESSION_SECRET || "dev-secret-change-me",
+  secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   rolling: true,
@@ -86,7 +119,7 @@ app.use(session({
     httpOnly: true,
     sameSite: "lax",
     secure: isProduction,
-    maxAge: 1000 * 60 * 60 * 24 * 7
+    maxAge: SESSION_MAX_AGE
   }
 }));
 
@@ -174,7 +207,12 @@ app.get("/auth/discord/callback", async (req, res) => {
   globalName: discordUser.global_name
 };
 
-req.session.save(() => {
+req.session.save((error) => {
+  if (error) {
+    console.error("Session save error:", error);
+    return res.status(500).send("Could not save login session");
+  }
+
   res.redirect(FRONTEND_URL);
 });
   } catch (error) {
@@ -332,7 +370,16 @@ app.post("/api/kills", requireLogin, async (req, res) => {
 });
 
 app.post("/api/logout", (req, res) => {
-  req.session.destroy(() => {
+  req.session.destroy((error) => {
+    if (error) {
+      console.error("Logout error:", error);
+      return res.status(500).json({ error: "Could not log out" });
+    }
+
+    res.clearCookie("nfsworldboss.sid", {
+      path: "/"
+    });
+
     res.json({ success: true });
   });
 });
@@ -376,7 +423,21 @@ app.post("/api/discord-alert", requireLogin, async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+
 app.use(express.static(__dirname));
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+
+async function startServer() {
+  try {
+    await pgPool.query("select 1");
+
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+      console.log("Persistent session store connected");
+    });
+  } catch (error) {
+    console.error("Could not connect to session database:", error);
+    process.exit(1);
+  }
+}
+
+startServer();
